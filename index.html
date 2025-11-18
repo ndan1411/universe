@@ -134,7 +134,8 @@
 
         // --- 2. THÊM HẠT CHỮ "TAMA" VÀO MẢNG CHUNG (PTS) ---
         const loader = new FontLoader();
-        loader.load('https://cdn.jsdelivr.yp.eu.org/npm/three@0.136.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+        // LỖI ĐƯỜNG DẪN ĐÃ ĐƯỢC SỬA TẠI ĐÂY 👇
+        loader.load('https://cdn.jsdelivr.net/npm/three@0.136.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
 
             const geometry = new TextGeometry('Tama', {
                 font: font,
@@ -149,7 +150,7 @@
             for (let i = 0; i < positions.length; i += 3) {
                 pts.push(new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]));
                 sizes.push(Math.random() * 1 + 0.5);
-                pushShift(true); // GỌI HÀM VÀ ĐẶT isText = true
+                pushShift(true); 
             }
 
             // --- 3. TẠO ĐỐI TƯỢNG POINTS DUY NHẤT ---
@@ -161,12 +162,12 @@
             let p = new THREE.Points(g, m);
             p.rotation.order = "ZYX";
             p.rotation.z = 0.2;
-            scene.add(p) // Chỉ có một đối tượng điểm
+            scene.add(p) 
 
             // --- VÒNG LẶP RENDER VÀ CHUYỂN ĐỘNG ---
             let clock = new THREE.Clock();
             renderer.setAnimationLoop(() => {
-                controls.update(); // OrbitControls xử lý việc xoay và di chuyển của người dùng
+                controls.update(); 
                 let t = clock.getElapsedTime() * 0.5;
                 gu.time.value = t * Math.PI;
 
