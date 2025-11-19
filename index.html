@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universe cho Tama ne</title>
 </head>
+
 <style>
     body {
         overflow: hidden;
@@ -20,31 +21,33 @@
         import { OrbitControls } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls";
         import { FontLoader } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/loaders/FontLoader";
         import { TextGeometry } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/geometries/TextGeometry";
+        import { MeshSurfaceSampler } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/math/MeshSurfaceSampler";
 
         console.clear();
 
         let scene = new THREE.Scene();
         scene.background = new THREE.Color(0x160016);
+
         let camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 1000);
         camera.position.set(0, 4, 21);
+
         let renderer = new THREE.WebGLRenderer();
         renderer.setSize(innerWidth, innerHeight);
         document.body.appendChild(renderer.domElement);
-        window.addEventListener("resize", event => {
+
+        window.addEventListener("resize", () => {
             camera.aspect = innerWidth / innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(innerWidth, innerHeight);
-        })
+        });
 
         let controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.enablePan = false;
 
-        let gu = {
-            time: { value: 0 }
-        }
+        let gu = { time: { value: 0 } };
 
-        // --- HÀM TẠO VẬT LIỆU CHO HẠT SÁNG ---
+        // Tao particle material
         let createParticleMaterial = () => {
             return new THREE.PointsMaterial({
                 size: 0.125,
@@ -75,9 +78,14 @@
                             float t = time;
                             float moveT = mod(shift.x + shift.z * t, PI2);
                             float moveS = mod(shift.y + shift.z * t, PI2);
-                            transformed += vec3(cos(moveS) * sin(moveT), cos(moveT), sin(moveS) * sin(moveT)) * shift.a;
+                            transformed += vec3(
+                                cos(moveS) * sin(moveT),
+                                cos(moveT),
+                                sin(moveS) * sin(moveT)
+                            ) * shift.a;
                         `
                     );
+
                     shader.fragmentShader = `
                         varying vec3 vColor;
                         ${shader.fragmentShader}
@@ -85,99 +93,104 @@
                         `#include <clipping_planes_fragment>`,
                         `#include <clipping_planes_fragment>
                             float d = length(gl_PointCoord.xy - 0.5);
-                            //if (d > 0.5) discard;
                         `
                     ).replace(
                         `vec4 diffuseColor = vec4( diffuse, opacity );`,
-                        `vec4 diffuseColor = vec4( vColor, smoothstep(0.5, 0.1, d)/* * 0.5 + 0.5*/ );`
+                        `vec4 diffuseColor = vec4( vColor, smoothstep(0.5, 0.1, d) );`
                     );
                 }
             });
         };
-        
-        // --- TẠO CÁC MẢNG DỮ LIỆU CHUNG CHO CẢ CHỮ VÀ THIÊN HÀ ---
-        let pts = []; // Vị trí điểm
-        let sizes = []; // Kích thước điểm
-        let shift = []; // Tham số chuyển động của điểm
+
+        let pts = [];
+        let sizes = [];
+        let shift = [];
 
         let pushShift = (isText = false) => {
-            if (isText) {
-                 // Nếu là hạt chữ, đặt chuyển động bằng 0 để hạt chữ không xoắn
-                shift.push(0, 0, 0, 0); 
-            } else {
-                // Nếu là hạt thiên hà, áp dụng chuyển động xoắn ốc
-                shift.push(
-                    Math.random() * Math.PI,
-                    Math.random() * Math.PI * 2,
-                    (Math.random() * 0.9 + 0.1) * Math.PI * 0.1,
-                    Math.random() * 0.9 + 0.1
-                );
-            }
-        }
+            if (isText) shift.push(0, 0, 0, 0);
+            else shift.push(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI * 2,
+                (Math.random() * 0.9 + 0.1) * Math.PI * 0.1,
+                Math.random() * 0.9 + 0.1
+            );
+        };
 
-        // --- 1. THÊM HẠT THIÊN HÀ VÀO MẢNG ---
-        // Tạo các hạt Sphere
+        // Galaxy particles
         for (let i = 0; i < 50000; i++) {
             sizes.push(Math.random() * 1.5 + 0.5);
             pushShift(false);
             pts.push(new THREE.Vector3().randomDirection().multiplyScalar(Math.random() * 0.5 + 9.5));
         }
-        // Tạo các hạt Torus
+
         for (let i = 0; i < 100000; i++) {
             let r = 10, R = 40;
             let rand = Math.pow(Math.random(), 1.5);
+
             let radius = Math.sqrt(R * R * rand + (1 - rand) * r * r);
-            pts.push(new THREE.Vector3().setFromCylindricalCoords(radius, Math.random() * 2 * Math.PI, (Math.random() - 0.5) * 2));
+            pts.push(new THREE.Vector3().setFromCylindricalCoords(
+                radius,
+                Math.random() * Math.PI * 2,
+                (Math.random() - 0.5) * 2
+            ));
+
             sizes.push(Math.random() * 1.5 + 0.5);
             pushShift(false);
         }
 
-        // --- 2. THÊM HẠT CHỮ "TAMA" VÀO MẢNG CHUNG (PTS) ---
+        // TEXT PARTICLES
         const loader = new FontLoader();
-        // LỖI ĐƯỜNG DẪN ĐÃ ĐƯỢC SỬA TẠI ĐÂY 👇
-        loader.load('https://cdn.jsdelivr.net/npm/three@0.136.0/examples/fonts/helvetiker_regular.typeface.json', function (font) {
+        loader.load(
+            "https://cdn.jsdelivr.net/npm/three@0.136.0/examples/fonts/helvetiker_regular.typeface.json",
+            font => {
 
-            const geometry = new TextGeometry('Tama', {
-                font: font,
-                size: 5,
-                height: 0.2,
-                curveSegments: 12,
-                bevelEnabled: false
-            });
-            geometry.center();
+                const textGeo = new TextGeometry("Tama", {
+                    font: font,
+                    size: 5,
+                    height: 2,
+                    curveSegments: 12,
+                    bevelEnabled: false
+                });
 
-            const positions = geometry.attributes.position.array;
-            for (let i = 0; i < positions.length; i += 3) {
-                pts.push(new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]));
-                sizes.push(Math.random() * 1 + 0.5);
-                pushShift(true); 
+                textGeo.center();
+
+                // MeshSurfaceSampler yêu cầu Mesh, không phải Points
+                const mesh = new THREE.Mesh(textGeo, new THREE.MeshBasicMaterial());
+                const sampler = new MeshSurfaceSampler(mesh).build();
+
+                const position = new THREE.Vector3();
+                const count = 18000;
+
+                for (let i = 0; i < count; i++) {
+                    sampler.sample(position);
+                    pts.push(position.clone());
+                    sizes.push(Math.random() * 1 + 0.5);
+                    pushShift(true);
+                }
+
+                // Create Geometry
+                let g = new THREE.BufferGeometry().setFromPoints(pts);
+                g.setAttribute("sizes", new THREE.Float32BufferAttribute(sizes, 1));
+                g.setAttribute("shift", new THREE.Float32BufferAttribute(shift, 4));
+
+                let material = createParticleMaterial();
+                let particles = new THREE.Points(g, material);
+
+                particles.rotation.order = "ZYX";
+                particles.rotation.z = 0.2;
+
+                scene.add(particles);
+
+                let clock = new THREE.Clock();
+                renderer.setAnimationLoop(() => {
+                    controls.update();
+                    let t = clock.getElapsedTime() * 0.5;
+                    gu.time.value = t * Math.PI;
+                    particles.rotation.y = t * 0.05;
+                    renderer.render(scene, camera);
+                });
             }
-
-            // --- 3. TẠO ĐỐI TƯỢNG POINTS DUY NHẤT ---
-            let g = new THREE.BufferGeometry().setFromPoints(pts);
-            g.setAttribute("sizes", new THREE.Float32BufferAttribute(sizes, 1));
-            g.setAttribute("shift", new THREE.Float32BufferAttribute(shift, 4));
-
-            let m = createParticleMaterial();
-            let p = new THREE.Points(g, m);
-            p.rotation.order = "ZYX";
-            p.rotation.z = 0.2;
-            scene.add(p) 
-
-            // --- VÒNG LẶP RENDER VÀ CHUYỂN ĐỘNG ---
-            let clock = new THREE.Clock();
-            renderer.setAnimationLoop(() => {
-                controls.update(); 
-                let t = clock.getElapsedTime() * 0.5;
-                gu.time.value = t * Math.PI;
-
-                // Áp dụng vòng xoay tự động cho đối tượng chung
-                p.rotation.y = t * 0.05;
-
-                renderer.render(scene, camera);
-            });
-
-        }); // Kết thúc FontLoader
+        );
     </script>
 </body>
 
